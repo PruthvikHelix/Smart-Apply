@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        /* Style for options list */
+        #options_list li {
+            list-style-type: none;
+            margin-bottom: 5px;
+        }
+        
+        .option-button {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to the Dashboard</h1>
+    <h2>User: {{ username }}</h2>
+
+    <h3>Total Experiences: {{ total_experiences[0] }}</h3>
+
+    <h3>LinkedIn Credentials</h3>
+    {% if linkedin_credentials %}
+    <p>LinkedIn Email: {{ linkedin_credentials[0] }}</p>
+    <p>LinkedIn Password: {{ linkedin_credentials[1] }}</p>
+    {% else %}
+    <p>No LinkedIn credentials found.</p>
+    {% endif %}
+
+    <!-- Optional: Add a form to update credentials -->
+    <form action="/dashboard" method="post">
+        <label for="linkedin_email">New LinkedIn Email:</label>
+        <input type="email" id="linkedin_email" name="linkedin_email" required><br><br>
+        <label for="linkedin_password">New LinkedIn Password:</label>
+        <input type="password" id="linkedin_password" name="linkedin_password" required><br><br>
+        <button type="submit">Update Credentials</button>
+    </form>
+
+    <!-- Display admin questions and options -->
+    <h3>Select a question:</h3>
+    <select id="question_select">
+        <option value="">Select a question</option>
+        {% for question in admin_questions %}
+            <option value="{{ question[0] }}">{{ question[1] }}</option>
+        {% endfor %}
+    </select>
+
+    <h3>Options:</h3>
+    <ul id="options_list">
+        <!-- Options will be loaded dynamically here -->
+    </ul>
+
+    <!-- Form to upload resume -->
+    <form action="/upload_resume" method="post" enctype="multipart/form-data">
+        <label for="resume">Upload Resume (PDF or Word):</label><br>
+        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required><br><br>
+        <button type="submit">Upload Resume</button>
+    </form>
+
+    <form action="/set_total_experiences" method="post">
+        <label for="total_experiences">Total Number of Experiences:</label><br>
+        <input type="number" id="total_experiences" name="total_experiences" required><br><br>
+        <button type="submit">Set Total Experiences</button>
+    </form>
+
+    <form action="/apply_job" method="post">
+        <label for="job">Job Title:</label><br>
+        <input type="text" id="job" name="job"><br><br>
+        <label for="location">Location:</label><br>
+        <input type="text" id="location" name="location"><br><br>
+        <button type="submit">Apply for Job</button>
+    </form>
+
+     <!-- Logout button -->
+    <form action="/logout" method="post">
+        <button type="submit">Logout</button>
+    </form>
+    
+
+    <!-- JavaScript for loading question options and sending selected option to backend -->
+    <script>
+        document.getElementById("question_select").addEventListener("change", function() {
+        var questionId = this.value;
+        if (questionId) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/get_question_options?id=" + questionId, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var options = JSON.parse(xhr.responseText).options;
+                    var optionsList = document.getElementById("options_list");
+                    optionsList.innerHTML = "";
+                    options.forEach(function(option) {
+                        var listItem = document.createElement("li");
+                        var button = document.createElement("button");
+                        button.textContent = option;
+                        button.classList.add("option-button");
+                        button.addEventListener("click", function() {
+                            // When an option is clicked, send the selected option to the backend
+                            var selectedOption = option;
+                            var data = {
+                                question_id: questionId,
+                                selected_option: selectedOption
+                            };
+                            var xhr = new XMLHttpRequest();
+                            xhr.open("POST", "/save_answer", true);
+                            xhr.setRequestHeader("Content-Type", "application/json");
+                            xhr.onreadystatechange = function() {
+                                if (xhr.readyState === 4 && xhr.status === 200) {
+                                    // Handle success response if needed
+                                    console.log("Answer saved successfully");
+                                    // Remove question and options from UI
+                                    document.getElementById("question_select").value = ""; // Reset question select
+                                    optionsList.innerHTML = ""; // Clear options list
+                                    // Remove selected option from admin_questions list
+                                    var optionIndex = options.indexOf(selectedOption);
+                                    if (optionIndex !== -1) {
+                                        options.splice(optionIndex, 1); // Remove selected option from options array
+                                        var optionElement = document.querySelector('option[value="' + questionId + '"]');
+                                        optionElement.parentNode.removeChild(optionElement); // Remove selected option from select element
+                                    }
+                                }
+                            };
+                            xhr.send(JSON.stringify(data));
+                        });
+                        listItem.appendChild(button);
+                        optionsList.appendChild(listItem);
+                    });
+                }
+            };
+            xhr.send();
+        } else {
+            document.getElementById("options_list").innerHTML = "";
+        }
+    });
+
+    </script>
+
+</body>
+</html>
